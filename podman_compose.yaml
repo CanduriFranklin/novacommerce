@@ -1,0 +1,14 @@
+version: '3.9'
+
+services:
+ # Define your services here for local development
+ # Example:
+ # inventory:
+ # build: ./services/inventory
+ # ports:
+ # - "5001:80"
+ # sales:
+ # build: ./services/sales
+ # ports:
+ # - "5002:80"
+ # ...

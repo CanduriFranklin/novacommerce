@@ -1,0 +1,20 @@
+# DB Agent Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: db-agent
+spec:
+ replicas:1
+ selector:
+ matchLabels:
+ app: db-agent
+ template:
+ metadata:
+ labels:
+ app: db-agent
+ spec:
+ containers:
+ - name: db-agent
+ image: db_agent:latest # Built with Podman
+ ports:
+ - containerPort:80

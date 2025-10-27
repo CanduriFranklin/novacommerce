@@ -1,0 +1,20 @@
+# Sales Agent Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: sales-agent
+spec:
+ replicas:1
+ selector:
+ matchLabels:
+ app: sales-agent
+ template:
+ metadata:
+ labels:
+ app: sales-agent
+ spec:
+ containers:
+ - name: sales-agent
+ image: sales_agent:latest # Built with Podman
+ ports:
+ - containerPort:80

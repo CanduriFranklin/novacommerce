@@ -1,0 +1,20 @@
+# Outbox Worker Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: outbox-worker
+spec:
+ replicas:1
+ selector:
+ matchLabels:
+ app: outbox-worker
+ template:
+ metadata:
+ labels:
+ app: outbox-worker
+ spec:
+ containers:
+ - name: outbox-worker
+ image: outbox_worker:latest # Built with Podman
+ ports:
+ - containerPort:80

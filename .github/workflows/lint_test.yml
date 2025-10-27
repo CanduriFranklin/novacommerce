@@ -1,0 +1,14 @@
+# Lint and Test Workflow
+
+name: Lint and Test
+on:
+ push:
+ branches: [ main ]
+ pull_request:
+ branches: [ main ]
+jobs:
+ lint_test:
+ runs-on: ubuntu-latest
+ steps:
+ - uses: actions/checkout@v3
+ # Add lint and test steps here

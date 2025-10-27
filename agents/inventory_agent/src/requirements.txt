@@ -1,0 +1,3 @@
+# Inventory Agent Requirements
+
+# List Python dependencies here

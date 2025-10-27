@@ -1,0 +1,20 @@
+# Inventory Service Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: inventory
+spec:
+ replicas:1
+ selector:
+ matchLabels:
+ app: inventory
+ template:
+ metadata:
+ labels:
+ app: inventory
+ spec:
+ containers:
+ - name: inventory
+ image: inventory:latest # Built with Podman
+ ports:
+ - containerPort:80

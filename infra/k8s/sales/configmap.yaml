@@ -1,0 +1,5 @@
+# Sales ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+ name: sales-config

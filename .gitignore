@@ -1,0 +1,12 @@
+# NovaCommerce Git Ignore
+bin/
+obj/
+*.user
+*.suo
+*.vs/
+.env
+__pycache__/
+.envrc
+*.pyc
+*.DS_Store
+node_modules/

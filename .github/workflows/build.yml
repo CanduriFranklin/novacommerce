@@ -1,0 +1,14 @@
+# Build Workflow
+
+name: Build
+on:
+ push:
+ branches: [ main ]
+ pull_request:
+ branches: [ main ]
+jobs:
+ build:
+ runs-on: ubuntu-latest
+ steps:
+ - uses: actions/checkout@v3
+ # Add build, test, and image steps here

@@ -1,0 +1,12 @@
+# Inventory Service
+apiVersion: v1
+kind: Service
+metadata:
+ name: inventory
+spec:
+ selector:
+ app: inventory
+ ports:
+ - protocol: TCP
+ port:80
+ targetPort:80

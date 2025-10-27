@@ -1,0 +1,12 @@
+# Deploy Workflow
+
+name: Deploy
+on:
+ push:
+ branches: [ main ]
+jobs:
+ deploy:
+ runs-on: ubuntu-latest
+ steps:
+ - uses: actions/checkout@v3
+ # Add deploy steps here
