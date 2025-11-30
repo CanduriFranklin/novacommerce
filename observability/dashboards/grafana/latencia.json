@@ -1,0 +1,6 @@
+﻿{
+  "title": "API Latency p95",
+  "panels": [
+    { "type": "graph", "title": "p95 Latency", "targets": [{ "refId": "A", "expr": "latency_p95_metric_placeholder" }] }
+  ]
+}

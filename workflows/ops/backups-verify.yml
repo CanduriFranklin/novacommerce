@@ -1,0 +1,11 @@
+﻿name: backups-verify
+on:
+  workflow_dispatch: {}
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Restore-from-backup drill (placeholder)
+        run: |
+          echo "Perform periodic restore test to validate RPO/RTO"

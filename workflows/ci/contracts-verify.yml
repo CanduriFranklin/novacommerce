@@ -1,0 +1,12 @@
+﻿name: contracts-verify
+on:
+  workflow_dispatch: {}
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify OpenAPI contracts
+        run: |
+          echo "Validate OpenAPI specs under backend/common/contracts and docs/contracts"
+          ls -la backend/common/contracts || true

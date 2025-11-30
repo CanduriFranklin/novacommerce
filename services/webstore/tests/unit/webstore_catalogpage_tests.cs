@@ -1,3 +1,13 @@
-# Catalog Page Unit Tests
+using Xunit;
 
-// Add catalog page unit tests here
+namespace NovaCommerce.Webstore.UnitTests
+{
+    public class WebstoreCatalogPageTests
+    {
+        [Fact]
+        public void PlaceholderTest()
+        {
+            Assert.True(true);
+        }
+    }
+}

@@ -1,0 +1,6 @@
+﻿{
+  "title": "API Error Rate",
+  "panels": [
+    { "type": "graph", "title": "Error %", "targets": [{ "refId": "A", "expr": "error_rate_metric_placeholder" }] }
+  ]
+}

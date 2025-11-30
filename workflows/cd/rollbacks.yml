@@ -1,0 +1,11 @@
+﻿name: rollbacks
+on:
+  workflow_dispatch: {}
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rollback placeholder
+        run: |
+          echo "Implement Helm rollback to previous stable release per environment"

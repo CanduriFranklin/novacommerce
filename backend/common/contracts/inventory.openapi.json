@@ -1,0 +1,8 @@
+﻿{
+  "openapi": "3.0.3",
+  "info": { "title": "Inventory API", "version": "0.1.0" },
+  "paths": {
+    "/api/products": { "post": { "summary": "Create product", "responses": { "201": { "description": "Created" } } } },
+    "/api/stock/{productId}": { "get": { "summary": "Get stock", "parameters": [{"name":"productId","in":"path","required":true,"schema":{"type":"string","format":"uuid"}}], "responses": { "200": { "description": "OK" } } } }
+  }
+}

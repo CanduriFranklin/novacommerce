@@ -1,3 +1,13 @@
-# Sales API Endpoints Integration Tests
+using Xunit;
 
-// Add API endpoint integration tests here
+namespace NovaCommerce.Sales.IntegrationTests
+{
+    public class SalesApiEndpointsTests
+    {
+        [Fact]
+        public void PlaceholderTest()
+        {
+            Assert.True(true);
+        }
+    }
+}

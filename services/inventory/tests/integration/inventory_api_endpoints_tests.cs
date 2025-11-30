@@ -1,3 +1,13 @@
-# Inventory API Endpoints Integration Tests
+using Xunit;
 
-// Add API endpoint integration tests here
+namespace NovaCommerce.Inventory.IntegrationTests
+{
+    public class InventoryApiEndpointsTests
+    {
+        [Fact]
+        public void PlaceholderTest()
+        {
+            Assert.True(true);
+        }
+    }
+}

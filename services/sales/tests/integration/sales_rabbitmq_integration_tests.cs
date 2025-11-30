@@ -1,3 +1,13 @@
-# Sales RabbitMQ Integration Tests
+using Xunit;
 
-// Add RabbitMQ integration tests here
+namespace NovaCommerce.Sales.IntegrationTests
+{
+    public class SalesRabbitMQIntegrationTests
+    {
+        [Fact]
+        public void PlaceholderTest()
+        {
+            Assert.True(true);
+        }
+    }
+}

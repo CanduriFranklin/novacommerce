@@ -1,0 +1,5 @@
+﻿<Project>
+  <Target Name="EmitBuildInfo" AfterTargets="Build">
+    <Message Importance="High" Text="Building $(MSBuildProjectName) ($(Configuration)) with .NET $(TargetFramework)" />
+  </Target>
+</Project>

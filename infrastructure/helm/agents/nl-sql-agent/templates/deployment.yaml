@@ -1,0 +1,33 @@
+﻿apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nl-sql-agent
+  labels:
+    app.kubernetes.io/name: nl-sql-agent
+    app.kubernetes.io/instance: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: nl-sql-agent
+      app.kubernetes.io/instance: default
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: nl-sql-agent
+        app.kubernetes.io/instance: default
+    spec:
+      containers:
+        - name: nl-sql-agent
+          image: "ghcr.io/your-org/nl-sql-agent:latest"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi

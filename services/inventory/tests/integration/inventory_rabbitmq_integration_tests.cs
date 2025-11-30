@@ -1,3 +1,13 @@
-# Inventory RabbitMQ Integration Tests
+using Xunit;
 
-// Add RabbitMQ integration tests here
+namespace NovaCommerce.Inventory.IntegrationTests
+{
+    public class InventoryRabbitMQIntegrationTests
+    {
+        [Fact]
+        public void PlaceholderTest()
+        {
+            Assert.True(true);
+        }
+    }
+}

@@ -1,0 +1,16 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://novacommerce.io/schemas/events/order_confirmed_v1.json",
+  "title": "order_confirmed_v1",
+  "type": "object",
+  "properties": {
+    "event": { "const": "order_confirmed" },
+    "version": { "const": 1 },
+    "orderId": { "type": "string", "format": "uuid" },
+    "customerId": { "type": "string", "format": "uuid" },
+    "total": { "type": "number", "minimum": 0 },
+    "confirmedAt": { "type": "string", "format": "date-time" }
+  },
+  "required": ["event", "version", "orderId", "customerId", "total", "confirmedAt"],
+  "additionalProperties": false
+}

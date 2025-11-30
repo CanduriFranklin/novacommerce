@@ -1,0 +1,6 @@
+﻿{
+  "title": "API Throughput",
+  "panels": [
+    { "type": "graph", "title": "Requests per second", "targets": [{ "refId": "A", "expr": "throughput_rps_metric_placeholder" }] }
+  ]
+}

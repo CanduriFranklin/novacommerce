@@ -1,3 +1,13 @@
-# Webstore API Gateway Routing Integration Tests
+using Xunit;
 
-// Add API gateway routing integration tests here
+namespace NovaCommerce.Webstore.IntegrationTests
+{
+    public class WebstoreApiGatewayRoutingTests
+    {
+        [Fact]
+        public void PlaceholderTest()
+        {
+            Assert.True(true);
+        }
+    }
+}

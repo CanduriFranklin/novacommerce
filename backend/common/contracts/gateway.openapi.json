@@ -1,0 +1,8 @@
+﻿{
+  "openapi": "3.0.3",
+  "info": { "title": "Gateway API", "version": "0.1.0" },
+  "paths": {
+    "/health/live": { "get": { "responses": { "200": { "description": "OK" } } } },
+    "/health/ready": { "get": { "responses": { "200": { "description": "OK" } } } }
+  }
+}

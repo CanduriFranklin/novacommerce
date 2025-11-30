@@ -1,0 +1,14 @@
+﻿name: security-scan
+on:
+  workflow_dispatch: {}
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: SAST placeholder
+        run: echo "Run SAST here (e.g., CodeQL, Semgrep)"
+      - name: Dependency scan placeholder
+        run: echo "Run dependency scanning here (e.g., dotnet list package --vulnerable)"
+      - name: Container scan placeholder
+        run: echo "Run container image scanning here (e.g., Trivy)"

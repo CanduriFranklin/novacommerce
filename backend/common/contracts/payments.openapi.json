@@ -1,0 +1,8 @@
+﻿{
+  "openapi": "3.0.3",
+  "info": { "title": "Payments API", "version": "0.1.0" },
+  "paths": {
+    "/api/payments": { "post": { "summary": "Initiate payment", "responses": { "202": { "description": "Accepted" } } } },
+    "/api/payments/{id}": { "get": { "summary": "Payment status", "parameters": [{"name":"id","in":"path","required":true,"schema":{"type":"string","format":"uuid"}}], "responses": { "200": { "description": "OK" } } } }
+  }
+}

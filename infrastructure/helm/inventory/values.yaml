@@ -1,0 +1,21 @@
+﻿replicaCount: 1
+
+image:
+  repository: your-registry/inventory-service
+  pullPolicy: IfNotPresent
+  tag: ""
+
+service:
+  type: ClusterIP
+  port: 80
+
+env:
+  # Environment variables are sourced from Kubernetes Secrets
+  # Example:
+  # - name: SQL_CONNECTION_STRING
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: sql-secrets
+  #       key: inventory-connection-string
+  - name: ASPNETCORE_ENVIRONMENT
+    value: "Production"

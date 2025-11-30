@@ -1,0 +1,8 @@
+﻿{
+  "openapi": "3.0.3",
+  "info": { "title": "Users/Auth API", "version": "0.1.0" },
+  "paths": {
+    "/api/users": { "post": { "summary": "Create user", "responses": { "201": { "description": "Created" } } } },
+    "/api/auth/token": { "post": { "summary": "Obtain JWT", "responses": { "200": { "description": "OK" } } } }
+  }
+}

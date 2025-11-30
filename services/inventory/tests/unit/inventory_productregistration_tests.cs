@@ -1,3 +1,13 @@
-# Product Registration Unit Tests
+using Xunit;
 
-// Add product registration unit tests here
+namespace NovaCommerce.Inventory.UnitTests
+{
+    public class InventoryProductRegistrationTests
+    {
+        [Fact]
+        public void PlaceholderTest()
+        {
+            Assert.True(true);
+        }
+    }
+}

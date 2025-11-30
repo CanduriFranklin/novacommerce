@@ -1,0 +1,25 @@
+﻿apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ops-agent
+  labels:
+    app.kubernetes.io/name: ops-agent
+spec:
+  schedule: "@hourly"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: ops-agent
+              image: "ghcr.io/your-org/ops-agent:latest"
+              imagePullPolicy: IfNotPresent
+              args: ["run","--migrations","--post-deploy-checks"]
+              resources:
+                limits:
+                  cpu: 200m
+                  memory: 256Mi
+                requests:
+                  cpu: 100m
+                  memory: 128Mi

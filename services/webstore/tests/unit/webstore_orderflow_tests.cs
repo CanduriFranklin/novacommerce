@@ -1,3 +1,13 @@
-# Order Flow Unit Tests
+using Xunit;
 
-// Add order flow unit tests here
+namespace NovaCommerce.Webstore.UnitTests
+{
+    public class WebstoreOrderFlowTests
+    {
+        [Fact]
+        public void PlaceholderTest()
+        {
+            Assert.True(true);
+        }
+    }
+}

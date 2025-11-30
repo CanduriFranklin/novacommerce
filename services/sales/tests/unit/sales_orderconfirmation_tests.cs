@@ -1,3 +1,13 @@
-# Order Confirmation Unit Tests
+using Xunit;
 
-// Add order confirmation unit tests here
+namespace NovaCommerce.Sales.UnitTests
+{
+    public class SalesOrderConfirmationTests
+    {
+        [Fact]
+        public void PlaceholderTest()
+        {
+            Assert.True(true);
+        }
+    }
+}

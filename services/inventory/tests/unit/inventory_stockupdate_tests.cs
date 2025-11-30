@@ -1,3 +1,13 @@
-# Stock Update Unit Tests
+using Xunit;
 
-// Add stock update unit tests here
+namespace NovaCommerce.Inventory.UnitTests
+{
+    public class InventoryStockUpdateTests
+    {
+        [Fact]
+        public void PlaceholderTest()
+        {
+            Assert.True(true);
+        }
+    }
+}

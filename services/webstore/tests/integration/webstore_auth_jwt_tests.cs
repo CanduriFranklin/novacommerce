@@ -1,3 +1,13 @@
-# Webstore Auth JWT Integration Tests
+using Xunit;
 
-// Add JWT authentication integration tests here
+namespace NovaCommerce.Webstore.IntegrationTests
+{
+    public class WebstoreAuthJwtTests
+    {
+        [Fact]
+        public void PlaceholderTest()
+        {
+            Assert.True(true);
+        }
+    }
+}

@@ -1,0 +1,7 @@
+﻿{
+  "name": "Error Rate",
+  "description": "Alert when 5xx error rate exceeds threshold",
+  "signal": "error_rate_percentage",
+  "threshold": 1.0,
+  "window": "PT5M"
+}

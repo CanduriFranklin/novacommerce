@@ -1,12 +1,57 @@
-# Deploy Workflow
+# Deploy and E2E Test Workflow
 
-name: Deploy
+name: Deploy and E2E Test
 on:
- push:
- branches: [ main ]
+  push:
+    branches: [ main-developers ]
+  pull_request:
+    branches: [ main-developers ]
+
 jobs:
- deploy:
- runs-on: ubuntu-latest
- steps:
- - uses: actions/checkout@v3
- # Add deploy steps here
+  deploy-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Autenticación con Azure
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+
+      - name: Deploy Inventory Service to Staging
+        run: |
+          echo "Deploying Inventory Service to staging environment..."
+          kubectl apply -f services/inventory/k8s/deployment.yml
+          kubectl set image deployment/inventory-service inventory-service=your-registry/inventory-service:${{ github.sha }}
+
+      - name: Deploy Sales Service to Staging
+        run: |
+          echo "Deploying Sales Service to staging environment..."
+          kubectl apply -f services/sales/k8s/deployment.yml
+          kubectl set image deployment/sales-service sales-service=your-registry/sales-service:${{ github.sha }}
+
+      - name: Deploy Identity Service to Staging
+        run: |
+          echo "Deploying Identity Service to staging environment..."
+          kubectl apply -f services/identity/k8s/deployment.yml
+          kubectl set image deployment/identity-service identity-service=your-registry/identity-service:${{ github.sha }}
+
+      - name: Deploy Gateway Service to Staging
+        run: |
+          echo "Deploying Gateway Service to staging environment..."
+          kubectl apply -f services/gateway/k8s/deployment.yml
+          kubectl set image deployment/gateway-service gateway-service=your-registry/gateway-service:${{ github.sha }}
+
+      - name: Run End-to-End Tests
+        run: dotnet test ./services/tests/e2e/E2E.Tests.csproj --configuration Release

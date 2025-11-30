@@ -1,0 +1,11 @@
+﻿name: chaos-tests
+on:
+  workflow_dispatch: {}
+jobs:
+  chaos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Chaos experiments (placeholder)
+        run: |
+          echo "Simulate controlled failures in AKS (pod eviction, node drain, broker unavailability)"
