@@ -1,21 +1,18 @@
 ﻿replicaCount: 1
 
 image:
-  repository: your-registry/inventory-service
+  repository: us-central1-docker.pkg.dev/festive-shield-443319-q5/nova-repo/inventory
+  tag: latest
   pullPolicy: IfNotPresent
-  tag: ""
 
 service:
   type: ClusterIP
-  port: 80
+  port: 8080
 
-env:
-  # Environment variables are sourced from Kubernetes Secrets
-  # Example:
-  # - name: SQL_CONNECTION_STRING
-  #   valueFrom:
-  #     secretKeyRef:
-  #       name: sql-secrets
-  #       key: inventory-connection-string
-  - name: ASPNETCORE_ENVIRONMENT
-    value: "Production"
+resources:
+  limits:
+    cpu: 250m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi

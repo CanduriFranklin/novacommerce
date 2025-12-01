@@ -1,27 +1,36 @@
 ﻿replicaCount: 1
 
 image:
-  repository: ghcr.io/your-org/gateway
+  repository: us-central1-docker.pkg.dev/festive-shield-443319-q5/nova-repo/gateway
   tag: latest
   pullPolicy: IfNotPresent
 
 service:
   type: ClusterIP
-  port: 80
+  port: 8080
 
 ingress:
-  enabled: false
-  className: nginx
+  enabled: true
+  className: "gce"
   hosts:
-    - host: gateway.local
+    - host: your-domain.com # IMPORTANT: Replace with your actual domain
       paths:
-        - path: /
-          pathType: Prefix
+        - path: /*
+          pathType: ImplementationSpecific
 
 resources:
   limits:
-    cpu: 250m
-    memory: 256Mi
+    cpu: "500m"
+    memory: "512Mi"
   requests:
-    cpu: 100m
-    memory: 128Mi
+    cpu: "100m"
+    memory: "128Mi"
+
+deploymentStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+
+secret:
+  name: gateway-secrets

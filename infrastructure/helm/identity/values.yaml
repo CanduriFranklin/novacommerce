@@ -1,0 +1,27 @@
+﻿replicaCount: 1
+
+image:
+  repository: us-central1-docker.pkg.dev/festive-shield-443319-q5/nova-repo/identity
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+resources:
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+
+deploymentStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 0
+    maxSurge: 1
+
+secret:
+  name: identity-secrets

@@ -1,7 +1,0 @@
-﻿{
-  "name": "SLO Availability",
-  "description": "Alert when availability falls below SLO threshold",
-  "signal": "availability_percentage",
-  "threshold": 99.9,
-  "window": "PT5M"
-}

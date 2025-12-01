@@ -1,7 +1,0 @@
-﻿{
-  "name": "Latency p95",
-  "description": "Alert when p95 latency exceeds threshold",
-  "signal": "latency_p95_ms",
-  "threshold": 300,
-  "window": "PT5M"
-}

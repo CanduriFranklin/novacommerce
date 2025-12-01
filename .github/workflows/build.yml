@@ -1,6 +1,5 @@
-# Build, Test, Scan, Validate, and Push Workflow
+name: Build, Test, and Push to GCP
 
-name: Build, Test, Scan, Validate, and Push
 on:
   push:
     branches: [ main-developers ]
@@ -8,16 +7,23 @@ on:
     branches: [ main-developers ]
 
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    strategy:
+      matrix:
+        service: [sales, inventory, identity, gateway, catalog, payments, users-auth, outbox]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup .NET 10
+      - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
+          # Usa la versión
           dotnet-version: '10.0.x'
 
       - name: Restore dependencies
@@ -26,59 +32,24 @@ jobs:
       - name: Build solution
         run: dotnet build --configuration Release --no-restore
 
-      - name: Run all unit and integration tests
+      - name: Run tests
         run: dotnet test --configuration Release --no-build --verbosity normal
 
-      - name: Install .NET Security Analyzers
-        run: dotnet add package Microsoft.CodeAnalysis.NetAnalyzers --version 10.0.100
-
-      - name: Run SAST Scan
-        run: dotnet build --configuration Release --no-restore -p:EnableNETAnalyzers=true -p:AnalysisLevel=latest
-
-      - name: Install Microsoft SBOM Tool
-        run: |
-          curl -L https://github.com/microsoft/sbom-tool/releases/download/v4.1.1/sbom-tool-linux-x64.tar.gz -o sbom-tool.tar.gz
-          mkdir -p $HOME/sbomtool
-          tar -xzf sbom-tool.tar.gz -C $HOME/sbomtool
-          echo "$HOME/sbomtool" >> $GITHUB_PATH
-
-      - name: Generate SBOM for Inventory Service
-        run: sbom-tool generate -b services/inventory/src -bc ./ -pn InventoryService -pv 1.0.0 -ps "CanduriFranklin" -nsb https://canduriframework.com -o services/inventory/target/_manifest
-
-      - name: Generate SBOM for Sales Service
-        run: sbom-tool generate -b services/sales/src -bc ./ -pn SalesService -pv 1.0.0 -ps "CanduriFranklin" -nsb https://canduriframework.com -o services/sales/target/_manifest
-
-      - name: Generate SBOM for Identity Service
-        run: sbom-tool generate -b services/identity/src -bc ./ -pn IdentityService -pv 1.0.0 -ps "CanduriFranklin" -nsb https://canduriframework.com -o services/identity/target/_manifest
-
-      # 🔐 Login en Azure y ACR
-      - name: Azure Login
-        uses: azure/login@v2
+      - id: 'auth'
+        uses: 'google-github-actions/auth@v2'
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
+          service_account: '${{ secrets.SERVICE_ACCOUNT }}'
 
-      - name: Login to Azure Container Registry
-        run: az acr login --name ${{ secrets.AZURE_ACR_NAME }}
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
 
-      - name: Build and Push Inventory Service Image
+      - name: 'Docker auth'
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Build and Push Service
         run: |
-          docker build -t ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/inventory-service:${{ github.sha }} -f services/inventory/Dockerfile .
-          docker push ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/inventory-service:${{ github.sha }}
-
-      - name: Build and Push Sales Service Image
-        run: |
-          docker build -t ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/sales-service:${{ github.sha }} -f services/sales/Dockerfile .
-          docker push ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/sales-service:${{ github.sha }}
-
-      - name: Build and Push Identity Service Image
-        run: |
-          docker build -t ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/identity-service:${{ github.sha }} -f services/identity/Dockerfile .
-          docker push ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/identity-service:${{ github.sha }}
-
-      - name: Build and Push Gateway Service Image
-        run: |
-          docker build -t ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/gateway-service:${{ github.sha }} -f services/gateway/Dockerfile .
-          docker push ${{ secrets.AZURE_ACR_NAME }}.azurecr.io/gateway-service:${{ github.sha }}
+          SERVICE_NAME=${{ matrix.service }}
+          DOCKERFILE_PATH="services/$SERVICE_NAME/Dockerfile"
+          docker build -t us-central1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/nova-repo/$SERVICE_NAME-service:${{ github.sha }} -f $DOCKERFILE_PATH .
+          docker push us-central1-docker.pkg.dev/${{ secrets.PROJECT_ID }}/nova-repo/$SERVICE_NAME-service:${{ github.sha }}
