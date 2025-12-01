@@ -18,8 +18,8 @@ variable "subnet_id" {
   type        = string
 }
 
-variable "gke_service_account" {
-  description = "The service account for GKE nodes."
+variable "node_service_account" {
+  description = "The service account for GKE node pool."
   type        = string
   sensitive   = true
 }

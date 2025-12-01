@@ -2,7 +2,7 @@
   <PropertyGroup>
     <TreatWarningsAsErrors Condition="'$(GITHUB_ACTIONS)' == 'true'">true</TreatWarningsAsErrors>
     <Nullable>enable</Nullable>
-    <LangVersion>preview</LangVersion>
+    <LangVersion>14</LangVersion>
     <AnalysisLevel>latest</AnalysisLevel>
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
@@ -11,5 +11,33 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.100" PrivateAssets="all" />
     <PackageReference Include="Meziantou.Analyzer" Version="2.0.253" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- ASP.NET Core -->
+    <PackageReference Update="Microsoft.AspNetCore.OpenApi" Version="10.0.0" />
+    <PackageReference Update="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.0" />
+    <PackageReference Update="Microsoft.AspNetCore.Diagnostics.HealthChecks" Version="10.0.0" />
+
+    <!-- EF Core -->
+    <PackageReference Update="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.0" />
+    <PackageReference Update="Microsoft.EntityFrameworkCore.Tools" Version="10.0.0" />
+    <PackageReference Update="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.0" />
+
+    <!-- Extensions -->
+    <PackageReference Update="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
+    <PackageReference Update="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.0" />
+    <PackageReference Update="Microsoft.Extensions.Options" Version="10.0.0" />
+
+    <!-- HealthChecks -->
+    <PackageReference Update="AspNetCore.HealthChecks.SqlServer" Version="10.0.0" />
+    <PackageReference Update="AspNetCore.HealthChecks.Rabbitmq" Version="10.0.0" />
+    <PackageReference Update="AspNetCore.HealthChecks.Redis" Version="10.0.0" />
+    <PackageReference Update="AspNetCore.HealthChecks.Azure.Storage.Blobs" Version="10.0.0" />
+
+    <!-- Azure SDK -->
+    <PackageReference Update="Azure.Identity" Version="1.11.0" />
+    <PackageReference Update="Azure.Storage.Blobs" Version="12.20.0" />
+    <PackageReference Update="Azure.Messaging.ServiceBus" Version="7.17.0" />
   </ItemGroup>
 </Project>

@@ -1,48 +1,47 @@
-﻿# Technical Review of NovaCommerce Project
+﻿# Technical Documentation: NovaCommerce GCP Refactoring
 
-This document provides a technical review of the NovaCommerce project, focusing on the status of its microservices, Kubernetes deployments, containerization, and infrastructure as code.
+This document outlines the refactored infrastructure for the NovaCommerce project on Google Cloud Platform (GCP).
 
-## 1. Microservices
+## Created Resources
 
-*   **Deployed Services:** The project is composed of the following microservices: `api-gateway`, `inventory-service`, `sales-service`, `identity-service`, and `support-agent`.
-*   **Endpoint Configurations:** The `api-gateway` uses Ocelot for routing, and the configuration is defined in `ocelot.json`. It routes requests to the downstream services and handles authentication, rate limiting, and circuit breaking.
-*   **External Dependencies:** The services depend on Azure SQL, Redis, and RabbitMQ.
+The following resources are created and managed by Terraform:
 
-## 2. Kubernetes (GKE)
+- **VPC, Subnet, NAT:** A new VPC (`nova-vpc`) and subnet (`nova-subnet`) are created to host the application resources. A Cloud NAT is configured to allow outbound internet access for services in the private subnet.
+- **GKE Autopilot:** A GKE Autopilot cluster (`nova-cluster`) is created to run the microservices.
+- **Artifact Registry:** A Docker repository (`nova-repo`) is created in Artifact Registry to store the application's Docker images.
+- **Cloud SQL (SQL Server):** A Cloud SQL for SQL Server instance (`nova-sql-instance`) is created to host the application's database.
+- **Redis Memorystore:** A Redis Memorystore instance (`nova-redis`) is created for caching.
+- **Pub/Sub:** A Pub/Sub topic (`nova-topic`) and subscription (`nova-subscription`) are created for asynchronous messaging.
+- **Secret Manager:** Secrets are created in Secret Manager to store sensitive data like API keys and database passwords.
+- **RabbitMQ in GKE with Helm:** RabbitMQ is deployed to the GKE cluster using the Bitnami Helm chart.
+- **Load Balancer (Ingress):** A GCE Ingress is created to expose the gateway microservice to the internet.
 
-*   **Cluster Status:** The Terraform configuration indicates the provisioning of an Azure Kubernetes Service (AKS) cluster.
-*   **Namespaces, Pods, Deployments, Services:** The `deploy.yml` workflow in `.github/workflows` indicates that Kubernetes deployment files are located in `services/<service-name>/k8s/`. These files define the deployments for the services.
-*   **RabbitMQ on GKE:** The Terraform configuration suggests a managed RabbitMQ service, not a deployment on GKE.
-*   **ConfigMaps, Secrets, Persistent Volumes:** Further investigation is needed.
+## Generated Variables
 
-## 3. Containers (Docker / Podman)
+The following variables are defined in `variables.tf` and can be customized:
 
-*   **Local and Remote Images:** Each service contains a multi-stage `Dockerfile` for building and publishing the application.
-*   **Dockerfiles/Podman Manifests:** Standard Dockerfiles are used.
-*   **Build and Deployment Pipelines:** The `.github/workflows` directory contains `build.yml` and `deploy.yml` files that define the CI/CD pipelines. The `build.yml` workflow builds, tests, scans, and pushes Docker images to Azure Container Registry. The `deploy.yml` workflow deploys the services to a staging environment and runs end-to-end tests.
+- `region`: The GCP region to deploy resources in.
+- `location`: The GCP location to deploy resources in.
+- `gke_service_account`: The service account for GKE nodes.
+- `sql_password`: The password for the Cloud SQL user (sensitive).
+- `jwt_secret`: The secret for signing JWTs (sensitive).
+- `openai_key`: The API key for OpenAI (sensitive).
+- `rabbitmq_password`: The password for the RabbitMQ user (sensitive).
 
-## 4. Terraform (IaC)
+## Deployment Steps with Terraform
 
-*   **Terraform Files and Modules:** The project uses Terraform to define its infrastructure as code. The configuration is organized into modules for AKS, Key Vault, Redis, RabbitMQ, Azure SQL, and Application Insights.
-*   **State and Backends:** The Terraform state is stored in an Azure backend, which is a good practice for collaboration.
-*   **Defined Resources:** The following resources are defined in the Terraform configuration:
-    *   Azure Kubernetes Service (AKS)
-    *   Azure Key Vault
-    *   Azure Cache for Redis
-    *   RabbitMQ Service
-    *   Azure SQL Database
-    *   Azure Application Insights
-*   **Workload Identity Federation:** Further investigation is needed to confirm its use.
+1. **Initialize Terraform:**
+   ```bash
+   terraform init
+   ```
+2. **Apply the configuration:**
+   ```bash
+   terraform apply
+   ```
 
-## 5. Gaps and Recommendations
+## GitHub Actions Workflow
 
-*   **Gaps Found:**
-    *   The current status of the Kubernetes cluster and its resources is unknown.
-    *   The use of Workload Identity Federation is not yet confirmed.
-*   **Immediate Recommendations:**
-    *   Run `kubectl` commands to inspect the Kubernetes cluster.
-    *   Examine the Terraform configuration for Workload Identity Federation.
+The CI/CD pipeline is defined in `.github/workflows` and uses a federated service account (`github-actions-sa@festive-shield-443319-q5.iam.gserviceaccount.com`) for authentication with GCP.
 
-## 6. Conclusion
-
-The NovaCommerce project has a solid foundation with a microservices architecture, containerization, and infrastructure as code. A complete CI/CD pipeline is in place for building and deploying the services. The next step is to verify the status of the deployed resources and the use of Workload Identity Federation.
+- **`build.yml`:** This workflow builds the Docker images for the microservices and pushes them to Artifact Registry on every push to the `main` branch.
+- **`deploy.yml`:** This workflow deploys the infrastructure with Terraform and the applications with Helm on every push to the `main` branch.

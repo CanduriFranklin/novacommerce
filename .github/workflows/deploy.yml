@@ -1,57 +1,130 @@
-# Deploy and E2E Test Workflow
+name: Deploy to GKE
 
-name: Deploy and E2E Test
 on:
   push:
     branches: [ main-developers ]
-  pull_request:
-    branches: [ main-developers ]
 
 jobs:
-  deploy-and-test:
+  deploy:
     runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    strategy:
+      matrix:
+        service: [sales, inventory, identity, gateway, catalog, payments, users-auth, outbox]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup .NET 10
-        uses: actions/setup-dotnet@v4
+      - id: 'auth'
+        uses: 'google-github-actions/auth@v2'
         with:
-          dotnet-version: '10.0.x'
+          workload_identity_provider: '${{ secrets.WIF_PROVIDER }}'
+          service_account: '${{ secrets.SERVICE_ACCOUNT }}'
 
-      # Autenticación con Azure
-      - name: Azure Login
-        uses: azure/login@v2
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: 'Get GKE credentials'
+        uses: 'google-github-actions/get-gke-credentials@v2'
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-          client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          cluster_name: '${{ secrets.GKE_CLUSTER }}'
+          location: '${{ secrets.GKE_REGION }}'
 
-      - name: Deploy Inventory Service to Staging
+      - name: Load secrets from Secret Manager
         run: |
-          echo "Deploying Inventory Service to staging environment..."
-          kubectl apply -f services/inventory/k8s/deployment.yml
-          kubectl set image deployment/inventory-service inventory-service=your-registry/inventory-service:${{ github.sha }}
+          echo "SQL_CONNECTION_STRING=$(gcloud secrets versions access latest --secret=sql-connection-string)" >> $GITHUB_ENV
+          echo "SQL_PASSWORD=$(gcloud secrets versions access latest --secret=sql-password)" >> $GITHUB_ENV
+          echo "REDIS_CONNECTION_STRING=$(gcloud secrets versions access latest --secret=redis-connection-string)" >> $GITHUB_ENV
+          echo "RABBITMQ_USER=$(gcloud secrets versions access latest --secret=rabbitmq-user)" >> $GITHUB_ENV
+          echo "RABBITMQ_PASSWORD=$(gcloud secrets versions access latest --secret=rabbitmq-password)" >> $GITHUB_ENV
+          echo "JWT_SECRET=$(gcloud secrets versions access latest --secret=jwt-secret)" >> $GITHUB_ENV
+          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> $GITHUB_ENV
 
-      - name: Deploy Sales Service to Staging
+      - name: Create/Update Kubernetes Secrets
         run: |
-          echo "Deploying Sales Service to staging environment..."
-          kubectl apply -f services/sales/k8s/deployment.yml
-          kubectl set image deployment/sales-service sales-service=your-registry/sales-service:${{ github.sha }}
+          SERVICE_NAME=${{ matrix.service }}
+          case "$SERVICE_NAME" in
+            sales)
+              kubectl create secret generic sales-secrets -n default \
+                --from-literal=ConnectionStrings__Default="$SQL_CONNECTION_STRING" \
+                --from-literal=Sql__Password="$SQL_PASSWORD" \
+                --from-literal=RabbitMQ__User="$RABBITMQ_USER" \
+                --from-literal=RabbitMQ__Password="$RABBITMQ_PASSWORD" \
+                --from-literal=Jwt__Secret="$JWT_SECRET" \
+                --from-literal=GEMINI_API_KEY="$GEMINI_API_KEY" \
+                --dry-run=client -o yaml | kubectl apply -f -
+              ;;
+            inventory)
+              kubectl create secret generic inventory-secrets -n default \
+                --from-literal=ConnectionStrings__Default="$SQL_CONNECTION_STRING" \
+                --from-literal=Sql__Password="$SQL_PASSWORD" \
+                --from-literal=Redis__Connection="$REDIS_CONNECTION_STRING" \
+                --from-literal=RabbitMQ__User="$RABBITMQ_USER" \
+                --from-literal=RabbitMQ__Password="$RABBITMQ_PASSWORD" \
+                --dry-run=client -o yaml | kubectl apply -f -
+              ;;
+            identity)
+              kubectl create secret generic identity-secrets -n default \
+                --from-literal=ConnectionStrings__Default="$SQL_CONNECTION_STRING" \
+                --from-literal=Sql__Password="$SQL_PASSWORD" \
+                --from-literal=Jwt__Secret="$JWT_SECRET" \
+                --from-literal=Redis__Connection="$REDIS_CONNECTION_STRING" \
+                --from-literal=RabbitMQ__User="$RABBITMQ_USER" \
+                --from-literal=RabbitMQ__Password="$RABBITMQ_PASSWORD" \
+                --dry-run=client -o yaml | kubectl apply -f -
+              ;;
+            gateway)
+              kubectl create secret generic gateway-secrets -n default \
+                --from-literal=Jwt__Secret="$JWT_SECRET" \
+                --from-literal=GEMINI_API_KEY="$GEMINI_API_KEY" \
+                --dry-run=client -o yaml | kubectl apply -f -
+              ;;
+            catalog)
+              kubectl create secret generic catalog-secrets -n default \
+                --from-literal=ConnectionStrings__Default="$SQL_CONNECTION_STRING" \
+                --from-literal=Sql__Password="$SQL_PASSWORD" \
+                --from-literal=Redis__Connection="$REDIS_CONNECTION_STRING" \
+                --from-literal=RabbitMQ__User="$RABBITMQ_USER" \
+                --from-literal=RabbitMQ__Password="$RABBITMQ_PASSWORD" \
+                --dry-run=client -o yaml | kubectl apply -f -
+              ;;
+            payments)
+              kubectl create secret generic payments-secrets -n default \
+                --from-literal=ConnectionStrings__Default="$SQL_CONNECTION_STRING" \
+                --from-literal=Sql__Password="$SQL_PASSWORD" \
+                --from-literal=RabbitMQ__User="$RABBITMQ_USER" \
+                --from-literal=RabbitMQ__Password="$RABBITMQ_PASSWORD" \
+                --dry-run=client -o yaml | kubectl apply -f -
+              ;;
+            users-auth)
+              kubectl create secret generic users-auth-secrets -n default \
+                --from-literal=ConnectionStrings__Default="$SQL_CONNECTION_STRING" \
+                --from-literal=Sql__Password="$SQL_PASSWORD" \
+                --from-literal=Jwt__Secret="$JWT_SECRET" \
+                --from-literal=RabbitMQ__User="$RABBITMQ_USER" \
+                --from-literal=RabbitMQ__Password="$RABBITMQ_PASSWORD" \
+                --dry-run=client -o yaml | kubectl apply -f -
+              ;;
+            outbox)
+              kubectl create secret generic outbox-secrets -n default \
+                --from-literal=ConnectionStrings__Default="$SQL_CONNECTION_STRING" \
+                --from-literal=Sql__Password="$SQL_PASSWORD" \
+                --from-literal=RabbitMQ__User="$RABBITMQ_USER" \
+                --from-literal=RabbitMQ__Password="$RABBITMQ_PASSWORD" \
+                --dry-run=client -o yaml | kubectl apply -f -
+              ;;
+          esac
 
-      - name: Deploy Identity Service to Staging
+      - name: Deploy with Helm
         run: |
-          echo "Deploying Identity Service to staging environment..."
-          kubectl apply -f services/identity/k8s/deployment.yml
-          kubectl set image deployment/identity-service identity-service=your-registry/identity-service:${{ github.sha }}
+          SERVICE_NAME=${{ matrix.service }}
+          CHART_PATH="./infrastructure/helm/$SERVICE_NAME"
+          helm upgrade --install $SERVICE_NAME $CHART_PATH -f $CHART_PATH/values.yaml --namespace default --wait
 
-      - name: Deploy Gateway Service to Staging
+      - name: Rollout validation
         run: |
-          echo "Deploying Gateway Service to staging environment..."
-          kubectl apply -f services/gateway/k8s/deployment.yml
-          kubectl set image deployment/gateway-service gateway-service=your-registry/gateway-service:${{ github.sha }}
-
-      - name: Run End-to-End Tests
-        run: dotnet test ./services/tests/e2e/E2E.Tests.csproj --configuration Release
+          SERVICE_NAME=${{ matrix.service }}
+          kubectl rollout status deployment/$SERVICE_NAME -n default

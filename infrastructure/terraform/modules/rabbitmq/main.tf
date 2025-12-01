@@ -1,17 +1,23 @@
-﻿resource "helm_release" "rabbitmq" {
+﻿data "google_secret_manager_secret_version" "rabbitmq_password" {
+  secret  = "rabbitmq-password"
+  version = "latest"
+}
+
+resource "helm_release" "rabbitmq" {
   name       = "rabbitmq"
   repository = "https://charts.bitnami.com/bitnami"
   chart      = "rabbitmq"
-  version    = "8.11.0"
+  version    = "15.0.0"
   namespace  = "default"
 
-  set {
-    name  = "auth.username"
-    value = var.rabbitmq_user
-  }
-
-  set {
-    name  = "auth.password"
-    value = var.rabbitmq_password
-  }
+  values = [<<-EOF
+image:
+  registry: docker.io
+  repository: bitnami/rabbitmq
+  tag: 3.13.2
+auth:
+  username: rabbitmq
+  password: ${data.google_secret_manager_secret_version.rabbitmq_password.secret_data}
+EOF
+  ]
 }

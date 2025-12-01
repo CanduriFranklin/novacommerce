@@ -1,70 +1,94 @@
-﻿terraform {
-  required_version = ">= 1.6.0"
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = ">= 3.100.0"
-    }
-    helm = {
-      source  = "hashicorp/helm"
-      version = ">= 2.10.0"
-    }
-  }
+﻿# Secretos desde Google Secret Manager
+data "google_secret_manager_secret_version" "sql_password" {
+  secret  = "sql-password"
+  project = "festive-shield-443319-q5"
 }
 
-provider "azurerm" {
-  features {}
+data "google_secret_manager_secret_version" "jwt_secret" {
+  secret  = "jwt-secret"
+  project = "festive-shield-443319-q5"
 }
 
-module "aks_cluster" {
-  source              = "./modules/aks_cluster"
-  name                = "${var.project}-aks"
+data "google_secret_manager_secret_version" "rabbitmq_user" {
+  secret  = "rabbitmq-user"
+  project = "festive-shield-443319-q5"
+}
+
+data "google_secret_manager_secret_version" "rabbitmq_password" {
+  secret  = "rabbitmq-password"
+  project = "festive-shield-443319-q5"
+}
+
+data "google_secret_manager_secret_version" "sql_connection_string" {
+  secret  = "sql-connection-string"
+  project = "festive-shield-443319-q5"
+}
+
+data "google_secret_manager_secret_version" "redis_connection_string" {
+  secret  = "redis-connection-string"
+  project = "festive-shield-443319-q5"
+}
+
+data "google_secret_manager_secret_version" "gke_node_sa" {
+  secret="gke-node-sa"
+  version = "latest"
+  project = "festive-shield-443319-q5"
+}
+
+# VPC
+module "vpc" {
+  source      = "./modules/vpc"
+  vpc_name    = "nova-vpc"
+  subnet_name = "nova-subnet"
+  region      = var.region
+}
+
+# GKE Cluster
+module "gke_cluster" {
+  source              = "./modules/gke_cluster"
+  cluster_name        = "nova-cluster"
   location            = var.location
-  resource_group_name = var.resource_group_name
-  tags                = var.tags
+  vpc_id              = module.vpc.vpc_id
+  subnet_id           = module.vpc.subnet_id
+  node_service_account = trimspace(data.google_secret_manager_secret_version.gke_node_sa.secret_data)
 }
 
-module "key_vault" {
-  source              = "./modules/key_vault"
-  name                = "${var.project}-kv"
+# Artifact Registry
+module "artifact_registry" {
+  source        = "./modules/artifact_registry"
+  location      = var.location
+  repository_id = "nova-repo"
+}
+
+# Cloud SQL
+module "cloud_sql" {
+  source           = "./modules/cloud_sql"
+  db_instance_name = "nova-sql-instance"
+  db_name          = "nova-db"
+  db_user          = "nova-user"
+  db_password      = data.google_secret_manager_secret_version.sql_password.secret_data
+  region           = var.region
+}
+
+# Redis
+module "redis" {
+  source              = "./modules/redis"
+  redis_instance_name = "nova-redis"
   location            = var.location
-  resource_group_name = var.resource_group_name
-  tenant_id           = var.tenant_id
-  tags                = var.tags
+  region              = var.region
+  connection_string   = data.google_secret_manager_secret_version.redis_connection_string.secret_data
 }
 
-module "redis_cache" {
-  source              = "./modules/redis_cache"
-  name                = "${var.project}-redis"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  tags                = var.tags
+# Pub/Sub
+module "pubsub" {
+  source            = "./modules/pubsub"
+  topic_name        = "nova-topic"
+  subscription_name = "nova-subscription"
 }
 
-module "rabbitmq_service" {
-  source              = "./modules/rabbitmq_service"
-  name                = "${var.project}-rabbitmq"
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  tags                = var.tags
-}
-
-module "azure_sql_database" {
-  source              = "./modules/azure_sql_database"
-  name_prefix         = var.project
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  tags                = var.tags
-}
-
-module "monitor_appinsights" {
-  source              = "./modules/monitor_appinsights"
-  name_prefix         = var.project
-  location            = var.location
-  resource_group_name = var.resource_group_name
-  tags                = var.tags
-}
-
-output "aks_name" {
-  value = module.aks_cluster.name
+# RabbitMQ
+module "rabbitmq" {
+  source            = "./modules/rabbitmq"
+  rabbitmq_user     = data.google_secret_manager_secret_version.rabbitmq_user.secret_data
+  rabbitmq_password = data.google_secret_manager_secret_version.rabbitmq_password.secret_data
 }

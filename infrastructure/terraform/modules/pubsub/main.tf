@@ -7,6 +7,4 @@ resource "google_pubsub_subscription" "subscription" {
   topic = google_pubsub_topic.topic.name
 
   ack_deadline_seconds = 20
-
-  message_retention_duration = "604800s" # 7 days
 }

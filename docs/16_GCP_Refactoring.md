@@ -45,3 +45,122 @@ The CI/CD pipeline is defined in `.github/workflows` and uses a federated servic
 
 - **`build.yml`:** This workflow builds the Docker images for the microservices and pushes them to Artifact Registry on every push to the `main` branch.
 - **`deploy.yml`:** This workflow deploys the infrastructure with Terraform and the applications with Helm on every push to the `main` branch.
+  📑 Technical Documentation: NovaCommerce GCP Refactoring
+  This document outlines the refactored infrastructure for the NovaCommerce project on Google Cloud Platform (GCP). All infrastructure code resides in the infrastructure/ folder of the repository and is managed with Terraform, Helm, and Kubernetes manifests.
+
+1. Created Resources (Terraform-managed)
+   VPC, Subnet, NAT
+
+VPC: nova-vpc
+
+Subnet: nova-subnet
+
+Cloud NAT: nova-nat for outbound internet access
+
+GKE Autopilot
+
+Cluster: nova-cluster (us-east1)
+
+Runs all microservices
+
+Artifact Registry
+
+Docker repository: nova-repo for application images
+
+Cloud SQL (SQL Server)
+
+Instance: nova-sql-instance
+
+Hosts application database
+
+Redis Memorystore
+
+Instance: nova-redis
+
+Provides caching
+
+Pub/Sub
+
+Topic: nova-topic
+
+Subscription: nova-subscription
+
+Secret Manager
+
+Secrets for sensitive data (SQL, Redis, JWT, OpenAI, RabbitMQ)
+
+RabbitMQ in GKE with Helm
+
+Deployed via Bitnami Helm chart in namespace messaging
+
+Load Balancer (Ingress)
+
+GCE Ingress exposing the gateway microservice
+
+2. Variables Defined (variables.tf)
+   Sensitive variables are marked with sensitive = true and injected at runtime:
+
+region → GCP region (e.g., us-east1)
+
+location → GCP location
+
+gke_service_account → Service account for GKE nodes
+
+sql_connection_string → Connection string for Cloud SQL (sensitive)
+
+redis_connection_string → Redis host/port (sensitive)
+
+jwt_secret → JWT signing secret (sensitive)
+
+openai_key → OpenAI API key (sensitive)
+
+rabbitmq_user → RabbitMQ username (sensitive)
+
+rabbitmq_password → RabbitMQ password (sensitive)
+
+3. Outputs (outputs.tf)
+   Terraform generates outputs for integration with services:
+
+gke_cluster_name
+
+artifact_registry_repo
+
+sql_connection_name
+
+redis_host
+
+pubsub_topic
+
+ingress_ip
+
+secrets_ids
+
+4. Deployment Steps with Terraform
+   bash
+   terraform init
+   terraform plan
+   terraform apply
+5. GitHub Actions Workflow
+   CI/CD pipelines are defined in .github/workflows and infrastructure/pipelines/github_actions. Authentication with GCP uses the federated service account:
+
+Service Account: github-actions-sa@festive-shield-443319-q5.iam.gserviceaccount.com
+
+Roles:
+
+roles/artifactregistry.reader
+
+roles/artifactregistry.writer
+
+roles/iam.serviceAccountUser
+
+roles/iam.serviceAccountTokenCreator
+
+roles/run.admin
+
+roles/run.invoker
+
+Workflows:
+
+build.yml → Builds Docker images and pushes to Artifact Registry.
+
+deploy.yml → Applies Terraform and deploys Helm charts to GKE.

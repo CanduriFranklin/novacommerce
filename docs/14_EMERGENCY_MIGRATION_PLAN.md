@@ -1,6 +1,6 @@
 ﻿# Emergency Migration Plan: NovaCommerce to Google Cloud
 
-**Migration Date:** 2024-07-26
+**Migration Date:** 2025-11-30
 
 This document outlines the necessary Google Cloud resources and a high-level plan to migrate the NovaCommerce project from its current environment to Google Cloud Platform (GCP).
 

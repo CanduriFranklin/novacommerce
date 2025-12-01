@@ -8,6 +8,11 @@ variable "location" {
   type        = string
 }
 
+variable "region" {
+  description = "The GCP region for the Redis instance."
+  type        = string
+}
+
 variable "connection_string" {
   description = "The connection string for the Redis instance."
   type        = string

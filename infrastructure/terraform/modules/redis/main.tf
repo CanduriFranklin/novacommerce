@@ -2,6 +2,7 @@
   name           = var.redis_instance_name
   tier           = "BASIC"
   memory_size_gb = 1
-  location_id    = var.location
+  location_id    = "us-central1-b"
+  region         = "us-central1"
   auth_enabled   = true
 }

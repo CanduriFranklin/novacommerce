@@ -1,26 +1,170 @@
 ﻿services:
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+  postgres:
+    image: postgres:15-alpine
     environment:
-      - ACCEPT_EULA=Y
-      - SA_PASSWORD=Your_password123
+      - POSTGRES_USER=${SQL_USER}
+      - POSTGRES_PASSWORD=${SQL_PASSWORD}
+      - POSTGRES_DB=${SQL_DATABASE}
     ports:
-      - "1433:1433"
+      - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P $${SA_PASSWORD} -Q 'SELECT 1' || exit 1"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
 
   rabbitmq:
     image: rabbitmq:3-management
     ports:
       - "5672:5672"
       - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  # Application services can be added with dockerfiles when ready
+  sales:
+    build:
+      context: ./services/sales
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - ConnectionStrings__Default=${ConnectionStrings__Default}
+      - Sql__Password=${Sql__Password}
+      - RabbitMQ__User=${RABBITMQ_USER}
+      - RabbitMQ__Password=${RABBITMQ_PASSWORD}
+      - Jwt__Secret=${JWT_SECRET}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+
+  inventory:
+    build:
+      context: ./services/inventory
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - ConnectionStrings__Default=${ConnectionStrings__Default}
+      - Sql__Password=${Sql__Password}
+      - Redis__Connection=${REDIS_CONNECTION}
+      - RabbitMQ__User=${RABBITMQ_USER}
+      - RabbitMQ__Password=${RABBITMQ_PASSWORD}
+
+  identity:
+    build:
+      context: ./services/identity
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - ConnectionStrings__Default=${ConnectionStrings__Default}
+      - Sql__Password=${Sql__Password}
+      - Jwt__Secret=${JWT_SECRET}
+      - Redis__Connection=${REDIS_CONNECTION}
+      - RabbitMQ__User=${RABBITMQ_USER}
+      - RabbitMQ__Password=${RABBITMQ_PASSWORD}
+
+  gateway:
+    build:
+      context: ./services/gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - sales
+      - identity
+      - inventory
+      - catalog
+      - payments
+      - users-auth
+    environment:
+      - Jwt__Secret=${JWT_SECRET}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+
+  catalog:
+    build:
+      context: ./services/catalog
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - ConnectionStrings__Default=${ConnectionStrings__Default}
+      - Sql__Password=${Sql__Password}
+      - Redis__Connection=${REDIS_CONNECTION}
+      - RabbitMQ__User=${RABBITMQ_USER}
+      - RabbitMQ__Password=${RABBITMQ_PASSWORD}
+
+  payments:
+    build:
+      context: ./services/payments
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - ConnectionStrings__Default=${ConnectionStrings__Default}
+      - Sql__Password=${Sql__Password}
+      - RabbitMQ__User=${RABBITMQ_USER}
+      - RabbitMQ__Password=${RABBITMQ_PASSWORD}
+
+  users-auth:
+    build:
+      context: ./services/users-auth
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - ConnectionStrings__Default=${ConnectionStrings__Default}
+      - Sql__Password=${Sql__Password}
+      - Jwt__Secret=${JWT_SECRET}
+      - RabbitMQ__User=${RABBITMQ_USER}
+      - RabbitMQ__Password=${RABBITMQ_PASSWORD}
+
+  outbox:
+    build:
+      context: ./services/outbox_worker
+      dockerfile: Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - ConnectionStrings__Default=${ConnectionStrings__Default}
+      - Sql__Password=${Sql__Password}
+      - RabbitMQ__User=${RABBITMQ_USER}
+      - RabbitMQ__Password=${RABBITMQ_PASSWORD}
