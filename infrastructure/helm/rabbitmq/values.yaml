@@ -1,17 +1,28 @@
-﻿replicaCount: 1
+﻿## Bitnami RabbitMQ chart values
+## https://github.com/bitnami/charts/tree/master/bitnami/rabbitmq
+##
+replicaCount: 1
 
 image:
-  repository: rabbitmq
-  tag: 3-management
+  repository: bitnami/rabbitmq
+  tag: 3.8
   pullPolicy: IfNotPresent
 
-service:
-  type: ClusterIP
-  amqpPort: 5672
-  managementPort: 15672
+auth:
+  username: "user"
+  password: "" # This should be set via --set or a secret
 
 persistence:
   enabled: true
-  storageClassName: "default"
-  accessMode: ReadWriteOnce
-  size: 1Gi
+  storageClassName: "standard" # GKE default storage class
+  accessModes:
+  - ReadWriteOnce
+  size: 8Gi
+
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "250m"
+  limits:
+    memory: "512Mi"
+    cpu: "500m"

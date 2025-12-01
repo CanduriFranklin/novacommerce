@@ -1,22 +1,13 @@
 ﻿replicaCount: 1
 
 image:
-  repository: us-central1-docker.pkg.dev/festive-shield-443319-q5/nova-repo/gateway
+  repository: your-org/outbox-service
   tag: latest
   pullPolicy: IfNotPresent
 
 service:
   type: ClusterIP
   port: 8080
-
-ingress:
-  enabled: true
-  className: "gce"
-  hosts:
-    - host: your-domain.com # IMPORTANT: Replace with your actual domain
-      paths:
-        - path: /*
-          pathType: ImplementationSpecific
 
 resources:
   limits:
@@ -33,4 +24,4 @@ deploymentStrategy:
     maxSurge: 1
 
 secret:
-  name: gateway-secrets
+  name: outbox-secrets

@@ -1,9 +1,7 @@
 ﻿apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}-inventory-service
-  labels:
-    app: inventory-service
+  name: outbox-service
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -12,4 +10,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app: inventory-service
+    app: outbox-service
