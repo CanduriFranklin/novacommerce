@@ -1,267 +1,224 @@
-﻿📌 Surgical prompt for verification, refactoring, and decoupled deployment
-Objective:
-To verify and refactor all existing files (Kubernetes/Helm .yaml files, GitHub Actions workflows, and Dockerfiles) of the novacommerce project, aligning them with the current secrets and resources in GCP. To ensure independent and resilient deployments per microservice, without placeholders or generic names.
-
-Microservices (exact names):
-- you go out
-- inventory
-  -identity
-- gateway
-- catalog
-- payments
-- users-auth
-  -outbox
-
-Repository Secrets (GitHub):
-- GEMINI_API_KEY
-- GKE_CLUSTER
-- GKE_REGION
-  -PROJECT_ID
-- SERVICE_ACCOUNT
-  -WIF_PROVIDER
-
-Secret Manager (GCP):
-- sql-connection-string
-- sql-password
-- redis-connection-string
-- rabbitmq-user
-- rabbitmq-password
-- jwt-secret
-- GEMINI_API_KEY
-
-Environment variable conventions (key → source value):
-- ConnectionStrings__Default ← sql-connection-string (Secret Manager)
-- Sql__Password ← sql-password (Secret Manager)
-- Redis__Connection ← redis-connection-string (Secret Manager)
-- RabbitMQ__User ← rabbitmq-user (Secret Manager)
-- RabbitMQ__Password ← rabbitmq-password (Secret Manager)
-- Jwt__Secret ← jwt-secret (Secret Manager)
-- GEMINI_API_KEY ← GEMINI_API_KEY (Preferred Repository Secret)
-
-1) Initial Verification (no changes until documented):
-- Review all Kubernetes/Helm YAML files in the repository and list any:
-
-- Inconsistencies in variable/secret names compared to those listed above.
-
-- Cross-dependencies between microservices (avoid coupling).
-
-- Missing probes (liveness/readiness) and resources (CPU/Mem).
-
-- Review build.yml and deploy.yml workflows:
-
-- Confirm the use of Repository Secrets as listed above.
-
-- Confirm Secret Manager extraction for the specified keys.
-
-- Review Dockerfiles per service:
-
-- Multi-stage, minimal images, no hardcoded secrets.
-
-- Submit a report with proposed paths and fixes BEFORE refactoring.
-
-2) Refactor secrets and configuration (use exact names):
-- Create a Kubernetes Secret per microservice, with specific keys:
-- sales-secrets: ConnectionStrings__Default, Sql__Password, RabbitMQ__User, RabbitMQ__Password, Jwt__Secret, GEMINI_API_KEY
-- inventory-secrets: ConnectionStrings__Default, Sql__Password, Redis__Connection, RabbitMQ__User, RabbitMQ__Password
-- identity-secrets: ConnectionStrings__Default, Sql__Password, Jwt__Secret, Redis__Connection, RabbitMQ__User, RabbitMQ__Password
-- gateway-secrets: Jwt__Secret, GEMINI_API_KEY
-- catalog-secrets: ConnectionStrings__Default, Sql__Password, Redis__Connection, RabbitMQ__User, RabbitMQ__Password
-- payments-secrets: ConnectionStrings__Default, Sql__Password, RabbitMQ__User, RabbitMQ__Password
-- users-auth-secrets: ConnectionStrings__Default, Sql__Password, Jwt__Secret, RabbitMQ__User, RabbitMQ__Password
-- outbox-secrets: ConnectionStrings__Default, Sql__Password, RabbitMQ__User, RabbitMQ__Password
-- In each chart/values.yaml of the microservice, reference its Secret:
-- envFrom:
-- secretRef:
-  name: <microservice>-secrets
-- It is prohibited to use placeholders and variables that are not in the previous lists.
-
-3) Workflows (GitHub Actions) with real names:
-- WIF Authentication (uses PROJECT_ID, WIF_PROVIDER, SERVICE_ACCOUNT).
-
-- GKE Context (uses GKE_REGION, GKE_CLUSTER, PROJECT_ID).
-
-- Load secrets to environment:
-- SQL_CONNECTION_STRING="$(gcloud secrets versions access latest --secret=sql-connection-string)"
-- SQL_PASSWORD="$(gcloud secrets versions access latest --secret=sql-password)"
-- REDIS_CONNECTION_STRING="$(gcloud secrets versions access latest --secret=redis-connection-string)"
-- RABBITMQ_USER="$(gcloud secrets versions access latest --secret=rabbitmq-user)"
-- RABBITMQ_PASSWORD="$(gcloud secrets versions access latest --secret=rabbitmq-password)"
-- JWT_SECRET="$(gcloud secrets versions access latest --secret=jwt-secret)"
-- GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
-- Create/update K8s Secrets (namespace default) explicitly:
-- salts:
-  kubectl create secret generic sales-secrets -n default \
-  --from-literal=ConnectionStrings__Default="$SQL_CONNECTION_STRING" \
-  --from-literal=Sql__Password="$SQL_PASSWORD" \
-  --from-literal=RabbitMQ__User="$RABBITMQ_USER" \
-  --from-literal=RabbitMQ__Password="$RABBITMQ_PASSWORD" \
-  --from-literal=Jwt__Secret="$JWT_SECRET" \
-  --from-literal=GEMINI_API_KEY="$GEMINI_API_KEY" \
-  --dry-run=client -o yaml | kubectl apply -f -
-- inventory:
-  kubectl create secret generic inventory-secrets -n default \
-  --from-literal=ConnectionStrings__Default="$SQL_CONNECTION_STRING" \
-  --from-literal=Sql__Password="$SQL_PASSWORD" \
-  --from-literal=Redis__Connection="$REDIS_CONNECTION_STRING" \
-  --from-literal=RabbitMQ__User="$RABBITMQ_USER" \
-  --from-literal=RabbitMQ__Password="$RABBITMQ_PASSWORD" \
-  --dry-run=client -o yaml | kubectl apply -f -
-  -identity:
-  kubectl create secret generic identity-secrets -n default \
-  --from-literal=ConnectionStrings__Default="$SQL_CONNECTION_STRING" \
-  --from-literal=Sql__Password="$SQL_PASSWORD" \
-  --from-literal=Jwt__Secret="$JWT_SECRET" \
-  --from-literal=Redis__Connection="$REDIS_CONNECTION_STRING" \
-  --from-literal=RabbitMQ__User="$RABBITMQ_USER" \
-  --from-literal=RabbitMQ__Password="$RABBITMQ_PASSWORD" \
-  --dry-run=client -o yaml | kubectl apply -f -
-- gateway:
-  kubectl create secret generic gateway-secrets -n default \
-  --from-literal=Jwt__Secret="$JWT_SECRET" \
-  --from-literal=GEMINI_API_KEY="$GEMINI_API_KEY" \
-  --dry-run=client -o yaml | kubectl apply -f -
-  -catalogue:
-  kubectl create secret generic catalog-secrets -n default \
-  --from-literal=ConnectionStrings__Default="$SQL_CONNECTION_STRING" \
-  --from-literal=Sql__Password="$SQL_PASSWORD" \
-  --from-literal=Redis__Connection="$REDIS_CONNECTION_STRING" \
-  --from-literal=RabbitMQ__User="$RABBITMQ_USER" \
-  --from-literal=RabbitMQ__Password="$RABBITMQ_PASSWORD" \
-  --dry-run=client -o yaml | kubectl apply -f -
-- payments:
-  kubectl create secret generic payments-secrets -n default \
-  --from-literal=ConnectionStrings__Default="$SQL_CONNECTION_STRING" \
-  --from-literal=Sql__Password="$SQL_PASSWORD" \
-  --from-literal=RabbitMQ__User="$RABBITMQ_USER" \
-  --from-literal=RabbitMQ__Password="$RABBITMQ_PASSWORD" \
-  --dry-run=client -o yaml | kubectl apply -f -
-- users-auth:
-  kubectl create secret generic users-auth-secrets -n default \
-  --from-literal=ConnectionStrings__Default="$SQL_CONNECTION_STRING" \
-  --from-literal=Sql__Password="$SQL_PASSWORD" \
-  --from-literal=Jwt__Secret="$JWT_SECRET" \
-  --from-literal=RabbitMQ__User="$RABBITMQ_USER" \
-  --from-literal=RabbitMQ__Password="$RABBITMQ_PASSWORD" \
-  --dry-run=client -o yaml | kubectl apply -f -
-  -outbox:
-  kubectl create secret generic outbox-secrets -n default \
-  --from-literal=ConnectionStrings__Default="$SQL_CONNECTION_STRING" \
-  --from-literal=Sql__Password="$SQL_PASSWORD" \
-  --from-literal=RabbitMQ__User="$RABBITMQ_USER" \
-  --from-literal=RabbitMQ__Password="$RABBITMQ_PASSWORD" \
-  --dry-run=client -o yaml | kubectl apply -f -
+﻿## Prompt quirúrgico para refactorización y modernización en .NET 10.0.100
+Este encargo es preciso y no negociable. Vas a refactorizar, modernizar y dejar operativos todos los microservicios, con arquitectura independiente, configuración por variables inyectadas (nada local), pruebas actualizadas, imágenes Docker y despliegue a Google Cloud (GKE) sincronizados por APIs y RabbitMQ. Mantén .NET 10.0.100 y C# 14. No bajes el target en ningún proyecto.
 
-4) Helm deployment (exact commands per microservice):
-- helm upgrade --install sales ./charts/sales -f ./charts/sales/values.yaml --namespace default --wait
-- helm upgrade --install inventory ./charts/inventory -f ./charts/inventory/values.yaml --namespace default --wait
-- helm upgrade --install identity ./charts/identity -f ./charts/identity/values.yaml --namespace default --wait
-- helm upgrade --install gateway ./charts/gateway -f ./charts/gateway/values.yaml --namespace default --wait
-- helm upgrade --install catalog ./charts/catalog -f ./charts/catalog/values.yaml --namespace default --wait
-- helm upgrade --install payments ./charts/payments -f ./charts/payments/values.yaml --namespace default --wait
-- helm upgrade --install users-auth ./charts/users-auth -f ./charts/users-auth/values.yaml --namespace default --wait
-- helm upgrade --install outbox ./charts/outbox -f ./charts/outbox/values.yaml --namespace default --wait
+## Alcance y estándares técnicos
+Runtime y lenguaje: .NET 10.0.100 estable, C# 14, OOP limpio, principios SOLID.
 
-5) Rollout validation (exact commands per microservice):
-- kubectl rollout status deployment/sales -n default
-- kubectl rollout status deployment/inventory -n default
-- kubectl rollout status deployment/identity -n default
-- kubectl rollout status deployment/gateway -n default
-- kubectl rollout status deployment/catalog -n default
-- kubectl rollout status deployment/payments -n default
-- kubectl rollout status deployment/users-auth -n default
-- kubectl rollout status deployment/outbox -n default
+Configuración: exclusivamente por variables de entorno inyectadas desde GitHub Actions y Google Secret Manager. No se permiten appsettings locales ni archivos de configuración en repos.
 
-6) Decoupling and resilience (apply to all charts):
-- Add probes:
+Despliegue: GKE (Google Kubernetes Engine) con Helm charts ya existentes en infrastructure/helm. Dockerfiles por servicio.
 
-- livenessProbe: GET /health/live (path and port of the service)
+Comunicación: APIs REST y mensajería con RabbitMQ. Servicios sincronizados por eventos.
 
-- readinessProbe: GET /health/ready
-- Define resources:
+Pruebas: unitarias, integración, contract/performance donde aplique. Actualiza a xUnit/NUnit moderno y FluentAssertions, testcontainers para integración.
 
-- resources:
+Observabilidad: readiness/liveness probes, logging estructurado, métricas, health checks.
 
-requests: { cpu: "100m", memory: "128Mi" }
+Ubicación de componentes en el repo
+Backend microservicios:
 
-limits: { cpu: "500m", memory: "512Mi" }
-- Deployment strategy:
+backend/catalog
 
-- rollingUpdate with explicit values ​​(maxUnavailable: 0, maxSurge: 1).
+backend/gateway
 
-- Isolation:
+src/Infrastructure/Configuration
 
-- One Secret per service and one chart per service.
+tests/performance
 
-- Avoid critical synchronous calls between services; prefer RabbitMQ where applicable.
+backend/gemini-agent
 
-Result:
-All YAML, Dockerfiles, and workflows refactored with real names and exact commands. Independent, resilient microservice deployments. No placeholders or ambiguous instructions.
+src/Api/v1, Application/Dtos|Validators, Domain, Infrastructure/Configuration|Middleware
 
-📌 Project Context
-Architecture: Microservices-based (sales, inventory, identity, gateway, catalog, payments, user-auth, outbox).
+backend/identity
 
-Infrastructure: Deployed on Google Kubernetes Engine (GKE).
+src/Api/v1, Application/Dtos|Validators, Domain, Infrastructure/Configuration|Middleware
 
-Supporting Services:
+tests/integration|performance|unit
 
-Cloud SQL (Postgres 15) → Main database.
+backend/inventory
 
-Redis Memorystore → Caching and temporary storage.
+k8s, src/Api/v1, Application/Dtos|Validators, Domain, Infrastructure/BlobStorage|Configuration|Messaging|Middleware
 
-RabbitMQ → Asynchronous messaging between microservices.
+tests/contract|integration|performance|unit
 
-Google Secret Manager → Secure storage of credentials and keys.
+backend/outbox
 
-CI/CD: GitHub Actions with Workload Identity Federation for authentication against GCP.
+src/Infrastructure/Migrations, Services
 
-Repository Secrets on GitHub: GEMINI_API_KEY, GKE_CLUSTER, GKE_REGION, PROJECT_ID, SERVICE_ACCOUNT, WIF_PROVIDER.
+tests/Outbox.IntegrationTests, Outbox.UnitTests, performance
 
-📦 What we want to achieve
-Refactoring existing files
+backend/payments
 
-Review and correct all .yaml files (Kubernetes and Helm), Dockerfiles, and workflows (build.yml, deploy.yml).
+backend/sales
 
-Align variable and secret names with those already existing in the Secret Manager and Repository Secrets.
+src/Api/v1, Application/Dtos|Validators, Domain, Infrastructure/Configuration|Messaging|Middleware
 
-Remove placeholders and generic names that could cause errors.
+tests/contract|integration|performance|unit
 
-Decoupled and resilient deployment
+backend/users-auth
 
-Each microservice must have its own Secret in Kubernetes.
+backend/agents
 
-Pods must have livenessProbe and readinessProbe configured.
+db_agent, inventory_agent, sales_agent (cada uno con src y tests)
 
-Define resources (CPU and memory) to prevent one service from affecting the others.
+Infraestructura y despliegue:
 
-Implement a deployment strategy with rollingUpdate to minimize downtime.
+infrastructure/helm/{catalog,gateway,identity,inventory,outbox,payments,rabbitmq,sales,users-auth}
 
-Enable secure CI/CD automation.
+infrastructure/helm/agents/{nl-sql-agent,ops-agent}
 
-Workflows must retrieve secrets from GCP and GitHub without hardcoding values.
+infrastructure/k8s/{ingress,networkpolicies}
 
-Deployments must be reproducible and auditable.
+infrastructure/terraform/{.terraform,modules,...}
 
-Validate that each microservice is deployed independently.
+Contratos:
 
-🎯 Expected Results
-Refactored and consistent files:
+contracts/schemas/events
 
-.yaml files with real microservice and secret names.
+CI/CD:
 
-Optimized Dockerfiles without embedded secrets.
+.github/workflows
 
-Workflows (build.yml, deploy.yml) aligned with GCP and GitHub Secrets.
+Variables de entorno reales disponibles
+Usa exclusivamente estas variables. Donde aplique, mapea a nombres estándar de cada servicio, pero no cambies el origen ni inventes valores:
 
-Independent deployments:
+## Repository secrets (infra GKE):
 
-If one microservice fails (e.g., sales), the others (inventory, identity, etc.) continue to function.
+GKE_CLUSTER
 
-RabbitMQ ensures asynchronous and resilient communication.
+GKE_REGION
 
-Secure and reliable infrastructure:
+PROJECT_ID
 
-All secrets managed in Secret Manager and GitHub Secrets.
+SERVICE_ACCOUNT
 
-Reproducible deployments in GKE with Helm.
+WIF_PROVIDER
 
-Automatic rollout validation for each microservice.
+## Secretos de lógica de negocio (Google Secret Manager):
+
+GEMINI_API_KEY
+
+gke-node-sa
+
+gke-service-account
+
+jwt-secret
+
+rabbitmq-user
+
+rabbitmq-password
+
+redis-connection-string
+
+sql-connection-string
+
+sql-password
+
+## Code Configuration Rules (No Local Files)
+Reading Variables:
+
+Inject IConfiguration/IOptions from the host, but the source will be exclusively Environment Variables.
+
+Pattern: Use service prefixes (e.g., INVENTORY_, SALES_, IDENTITY_) if you need to isolate them, but respect the actual names listed above. Don't invent new secrets.
+
+Minimum mappings per service (examples):
+
+RabbitMQ: RABBITMQ__USER=rabbitmq-user, RABBITMQ__PASSWORD=rabbitmq-password, RABBITMQ__HOST=rabbitmq, RABBITMQ__PORT=5672
+
+JWT/Auth: AUTH__JWT_SECRET=jwt-secret, AUTH__ISSUER, AUTH__AUDIENCE (if required, they must come via env from CI/secrets)
+
+SQL: SQL__CONNECTION_STRING=sql-connection-string, SQL__PASSWORD=sql-password
+
+Redis: REDIS__CONNECTION_STRING=redis-connection-string
+
+Gemini: GEMINI__API_KEY=GEMINI_API_KEY
+
+General: PROJECT_ID, GKE_REGION, GKE_CLUSTER for telemetry and tagging if applicable.
+
+Prohibited:
+
+appsettings.json, appsettings.Development.json, secrets.json, any local file containing credentials.
+
+Fallbacks to default values ​​that hide configuration errors.
+
+Refactoring per service (deliverables)
+For each service folder in backend/*:
+
+Project and target:
+
+Update/create .csproj with TargetFramework.NET 10.0 and Lang Version 14.
+
+Enable Nullable and TreatWarningsAsErrors in domain and application projects.
+
+Internal architecture:
+
+Layers: API, Application, Domain, Infrastructure (Configuration, Messaging, Middleware, Persistence).
+
+Apply clean OOP, separation of duties, DTOs/Validators, Domain with aggregates/entities, Application with use cases, Infrastructure with adapters.
+
+Configuration and startup:
+
+Minimal Program.cs with builder.Services and builder.Configuration only from Environment.
+
+HealthChecks, Swagger (only if required), Serilog or structured logging.
+
+REST endpoints in API/v1, validation with FluentValidation.
+
+RabbitMQ Messaging:
+
+Messaging client in Infrastructure/Messaging with connection from environment variables.
+
+Publishes and consumes events defined in contracts/schemas/events.
+
+Retries/backoffs and delivery confirmations.
+
+Persistence:
+
+SQL via EF Core or Dapper depending on the service, string from SQL__CONNECTION_STRING.
+
+Migrations in Infrastructure/Migrations (when applicable, e.g., outbox).
+
+Dockerfile:
+
+Multi-stage: SDK:10.0.100 for build, aspnet:10.0.100 for runtime.
+
+Copies only necessary projects. Use arguments for version/appVersion if applicable.
+
+Environment variables declared at runtime, without sensitive default values.
+
+Helm chart alignment:
+
+Review infrastructure/helm/<service>: Chart.yaml name=<service>, values.yaml with dynamic image.tag (from workflow) and mapped environment variables.
+
+Readiness/liveness probes, resources, and autoscaling if applicable.
+
+Testing:
+
+Unit: xUnit/NUnit + Fluent Assertions, Application and Domain coverage.
+
+Integration: Test containers for RabbitMQ/SQL/Redis; do not hardcode connections.
+
+Contract/performance: Maintain existing folders and modernize pipelines.
+
+Observability:
+
+/health, metrics (Prometheus/OpenTelemetry if in scope), correlated logs.
+
+CI/CD Settings and Deployment
+Image Build and Push: GitHub Actions builds the image per service and tags it using appVersion/commit SHA.
+
+Workflow Variables: Uses secrets GKE_CLUSTER, GKE_REGION, PROJECT_ID, SERVICE_ACCOUNT, and WIF_PROVIDER to authenticate and deploy to GKE.
+
+Helm Upgrade: For each service, CHART_PATH=./infrastructure/helm/<service>, pass environment variables to the chart via values ​​or environment variables in Deployment.
+
+Restrictions: Do not add configuration files to repositories; all configuration comes from the pipeline's secrets/variables.
+
+Acceptance Criteria: Compiles to .NET 10.0 with C# 14 in all projects. No target downgrade.
+
+Each service has its own .csproj, Program.cs, clean layers, Dockerfile, updated tests, and a ready Helm chart.
+
+No local app settings. All configurations, including environment variables and listed secrets.
+
+Synchronized events and APIs: services publish/consume on RabbitMQ and expose functional REST endpoints.
+
+Successful deployment to GKE via Helm with readiness/liveness and health checks in green.

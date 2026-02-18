@@ -1,16 +1,15 @@
 ﻿apiVersion: v1
 kind: Service
 metadata:
-  name: catalog-service
+  name: {{ include "catalog.fullname" . }}
   labels:
-    app.kubernetes.io/name: catalog-service
-    app.kubernetes.io/instance: default
+    {{- include "catalog.labels" . | nindent 4 }}
 spec:
-  type: ClusterIP
-  selector:
-    app.kubernetes.io/name: catalog-service
-    app.kubernetes.io/instance: default
+  type: {{ .Values.service.type }}
   ports:
-    - name: http
-      port: 8080
-      targetPort: 8080
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "catalog.selectorLabels" . | nindent 4 }}

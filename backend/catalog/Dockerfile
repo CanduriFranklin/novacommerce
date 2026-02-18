@@ -1,17 +1,40 @@
-﻿# Use the official .NET SDK image as a build stage
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+﻿# syntax=docker/dockerfile:1.4
+
+# Stage 1: Build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.100 AS build
+WORKDIR /src
+
+# Copy the Catalog project file and restore dependencies
+COPY ["backend/catalog/src/Catalog.csproj", "backend/catalog/src/"]
+COPY ["contracts/contracts.csproj", "contracts/"]
+RUN dotnet restore "backend/catalog/src/Catalog.csproj"
+
+# Copy the remaining source code and build the project
+COPY . .
+WORKDIR /src/backend/catalog/src
+RUN dotnet build "Catalog.csproj" -c Release -o /app/build
+
+# Stage 2: Publish
+FROM build AS publish
+WORKDIR /src/backend/catalog/src
+RUN dotnet publish "Catalog.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+# Stage 3: Runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.100 AS final
 WORKDIR /app
+EXPOSE 8080
+EXPOSE 8081
 
-# Copy csproj and restore as distinct layers
-COPY *.csproj ./
-RUN dotnet restore
+# Copy published application
+COPY --from=publish /app/publish .
 
-# Copy everything else and build
-COPY . ./
-RUN dotnet publish -c Release -o out
+# Set environment variables for runtime (no sensitive defaults)
+ENV ASPNETCORE_URLS="http://+:8080;https://+:8081"
+ENV ASPNETCORE_ENVIRONMENT="Production"
+# These should be injected by Kubernetes/Secret Manager
+# ENV SQL__CONNECTION_STRING=""
+# ENV RABBITMQ__HOST="rabbitmq"
+# ENV RABBITMQ__USER=""
+# ENV RABBITMQ__PASSWORD=""
 
-# Build runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
-WORKDIR /app
-COPY --from=build /app/out .
-ENTRYPOINT ["dotnet", "catalog.dll"]
+ENTRYPOINT ["dotnet", "Catalog.dll"]

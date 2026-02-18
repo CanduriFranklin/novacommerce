@@ -1,6 +1,6 @@
 ﻿apiVersion: v2
-name: sales-service
-description: NovaCommerce Sales Service
+name: sales
+description: A Helm chart for the Sales microservice
 type: application
 version: 0.1.0
-appVersion: "0.1.0"
+appVersion: "1.0.0"

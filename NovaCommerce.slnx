@@ -3,12 +3,16 @@
   <Folder Name="/services/outbox_worker/" />
   <Folder Name="/services/outbox_worker/tests/" />
   <Folder Name="/services/outbox_worker/tests/performance/">
-    <Project Path="services/outbox_worker/tests/performance/Outbox.PerformanceTests.csproj" />
+    <Project Path="services/outbox_worker/tests/performance/Outbox.PerformanceTests.csproj">
+      <Deploy Solution="Debug|*" />
+    </Project>
   </Folder>
   <Folder Name="/services/webstore/" />
   <Folder Name="/services/webstore/tests/" />
   <Folder Name="/services/webstore/tests/performance/">
     <Project Path="services/webstore/tests/performance/Webstore.PerformanceTests.csproj" />
   </Folder>
-  <Project Path="NovaCommerce.csproj" />
+  <Project Path="NovaCommerce.csproj">
+    <Deploy Solution="Debug|*" />
+  </Project>
 </Solution>

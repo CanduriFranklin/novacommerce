@@ -1,16 +1,15 @@
 ﻿apiVersion: v1
 kind: Service
 metadata:
-  name: payments-service
+  name: {{ include "payments.fullname" . }}
   labels:
-    app.kubernetes.io/name: payments-service
-    app.kubernetes.io/instance: default
+    {{- include "payments.labels" . | nindent 4 }}
 spec:
-  type: ClusterIP
-  selector:
-    app.kubernetes.io/name: payments-service
-    app.kubernetes.io/instance: default
+  type: {{ .Values.service.type }}
   ports:
-    - name: http
-      port: 8080
-      targetPort: 8080
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "payments.selectorLabels" . | nindent 4 }}

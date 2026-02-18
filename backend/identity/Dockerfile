@@ -1,22 +1,40 @@
-﻿# Stage 1: Build
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+﻿# syntax=docker/dockerfile:1.4
+
+# Stage 1: Build
+FROM mcr.microsoft.com/dotnet/sdk:10.0.100 AS build
 WORKDIR /src
 
-# Copy csproj and restore as distinct layers
-COPY ["src/Identity.csproj", "src/"]
-RUN dotnet restore "src/Identity.csproj"
+# Copy the Identity project file and restore dependencies
+COPY ["backend/identity/src/Identity.csproj", "backend/identity/src/"]
+COPY ["contracts/contracts.csproj", "contracts/"]
+RUN dotnet restore "backend/identity/src/Identity.csproj"
 
-# Copy everything else and build
+# Copy the remaining source code and build the project
 COPY . .
-WORKDIR "/src/src"
+WORKDIR /src/backend/identity/src
 RUN dotnet build "Identity.csproj" -c Release -o /app/build
 
 # Stage 2: Publish
 FROM build AS publish
-RUN dotnet publish "Identity.csproj" -c Release -o /app/publish
+WORKDIR /src/backend/identity/src
+RUN dotnet publish "Identity.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
-# Stage 3: Final
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
+# Stage 3: Runtime
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.100 AS final
 WORKDIR /app
+EXPOSE 8080
+EXPOSE 8081
+
+# Copy published application
 COPY --from=publish /app/publish .
+
+# Set environment variables for runtime (no sensitive defaults)
+ENV ASPNETCORE_URLS="http://+:8080;https://+:8081"
+ENV ASPNETCORE_ENVIRONMENT="Production"
+# These should be injected by Kubernetes/Secret Manager
+# ENV SQL__CONNECTION_STRING=""
+# ENV AUTH__JWT_SECRET=""
+# ENV AUTH__ISSUER=""
+# ENV AUTH__AUDIENCE=""
+
 ENTRYPOINT ["dotnet", "Identity.dll"]
