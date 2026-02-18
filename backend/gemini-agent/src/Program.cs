@@ -1,45 +1,59 @@
-﻿using System;
+﻿using Serilog;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
-using Serilog;
-using Serilog.Formatting.Json;
 
-namespace NovaCommerce.SupportAgent
+var builder = WebApplication.CreateBuilder(args);
+
+// Clear default configuration providers to ensure only environment variables are used
+builder.Configuration.Sources.Clear();
+builder.Configuration.AddEnvironmentVariables();
+
+// Configure Serilog
+builder.Host.UseSerilog((context, services, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext());
+
+// Add services to the container.
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Ensure GEMINI__API_KEY is present
+var geminiApiKey = builder.Configuration["GEMINI__API_KEY"];
+if (string.IsNullOrEmpty(geminiApiKey))
 {
-    public class Program
-    {
-        public static void Main(string[] args)
-        {
-            Log.Logger = new LoggerConfiguration()
-                .Enrich.FromLogContext()
-                .WriteTo.Console(new JsonFormatter())
-                .CreateBootstrapLogger();
-
-            try
-            {
-                Log.Information("Starting up");
-                CreateHostBuilder(args).Build().Run();
-            }
-            catch (Exception ex)
-            {
-                Log.Fatal(ex, "Application start-up failed");
-            }
-            finally
-            {
-                Log.CloseAndFlush();
-            }
-        }
-
-        public static IHostBuilder CreateHostBuilder(string[] args) =>
-            Host.CreateDefaultBuilder(args)
-                .UseSerilog((context, services, configuration) => configuration
-                    .ReadFrom.Configuration(context.Configuration)
-                    .ReadFrom.Services(services)
-                    .Enrich.FromLogContext()
-                    .WriteTo.Console(new JsonFormatter()))
-                .ConfigureWebHostDefaults(webBuilder =>
-                {
-                    webBuilder.UseStartup<Startup>();
-                });
-    }
+    throw new InvalidOperationException("GEMINI__API_KEY environment variable is not set.");
 }
+// You might want to register this key for injection into other services
+builder.Services.AddSingleton(geminiApiKey); // Example: Register as a singleton string
+
+// Add Health Checks
+builder.Services.AddHealthChecks(); // Basic health check
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+
+// Map health checks
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = (check) => check.Tags.Contains("ready"),
+});
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = (_) => false // Liveness check only checks if the app is running
+});
+
+app.MapGet("/", () => "Hello from Gemini Agent!");
+
+app.Run();

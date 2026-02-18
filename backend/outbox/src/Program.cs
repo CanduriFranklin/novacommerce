@@ -1,76 +1,83 @@
-﻿using OutboxWorker.Infrastructure;
-using OutboxWorker.Services;
+﻿using Microsoft.EntityFrameworkCore;
 using Serilog;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-using Microsoft.EntityFrameworkCore;
+using RabbitMQ.Client;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 
-namespace OutboxWorker
+var builder = WebApplication.CreateBuilder(args);
+
+// Clear default configuration providers to ensure only environment variables are used
+builder.Configuration.Sources.Clear();
+builder.Configuration.AddEnvironmentVariables();
+
+// Configure Serilog
+builder.Host.UseSerilog((context, services, configuration) => configuration
+    .ReadFrom.Configuration(context.Configuration)
+    .ReadFrom.Services(services)
+    .Enrich.FromLogContext());
+
+// Add services to the container.
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Configure DbContext
+var sqlConnectionString = builder.Configuration["SQL__CONNECTION_STRING"];
+if (string.IsNullOrEmpty(sqlConnectionString))
 {
-    public class Program
-    {
-        public static void Main(string[] args)
-        {
-            Log.Logger = new LoggerConfiguration()
-                .WriteTo.Console()
-                .WriteTo.File("logs/outbox-worker-.txt", rollingInterval: RollingInterval.Day)
-                .CreateLogger();
-
-            try
-            {
-                Log.Information("Starting Outbox Worker host");
-                CreateHostBuilder(args).Build().Run();
-            }
-            catch (Exception ex)
-            {
-                Log.Fatal(ex, "Host terminated unexpectedly");
-            }
-            finally
-            {
-                Log.CloseAndFlush();
-            }
-        }
-
-        public static IHostBuilder CreateHostBuilder(string[] args) =>
-            Host.CreateDefaultBuilder(args)
-                .UseSerilog()
-                .ConfigureServices((hostContext, services) =>
-                {
-                    var configuration = hostContext.Configuration;
-
-                    // Configure OpenTelemetry
-                    services.AddOpenTelemetry()
-                        .WithTracing(builder => builder
-                            .AddSource("OutboxWorker")
-                            .SetResourceBuilder(
-                                ResourceBuilder.CreateDefault()
-                                    .AddService(serviceName: "OutboxWorker", serviceVersion: "1.0.0"))
-                            .AddAspNetCoreInstrumentation()
-                            .AddEntityFrameworkCoreInstrumentation()
-                            .AddHttpClientInstrumentation()
-                            .AddConsoleExporter());
-
-                    // Configure DbContext
-                    var sqlConnectionString = configuration["SQL_CONNECTION_STRING"];
-                    if (string.IsNullOrEmpty(sqlConnectionString))
-                    {
-                        Log.Fatal("SQL_CONNECTION_STRING environment variable is not set.");
-                        throw new InvalidOperationException("SQL_CONNECTION_STRING environment variable is not set.");
-                    }
-                    services.AddDbContext<OutboxDbContext>(options =>
-                        options.UseSqlServer(sqlConnectionString));
-
-                    // Configure RabbitMQ Publisher
-                    var rabbitMqConnectionString = configuration["RABBITMQ_CONNECTION_STRING"];
-                    if (string.IsNullOrEmpty(rabbitMqConnectionString))
-                    {
-                        Log.Fatal("RABBITMQ_CONNECTION_STRING environment variable is not set.");
-                        throw new InvalidOperationException("RABBITMQ_CONNECTION_STRING environment variable is not set.");
-                    }
-                    services.AddSingleton(new RabbitMqPublisher(rabbitMqConnectionString));
-
-                    // Register OutboxProcessor as a hosted service
-                    services.AddHostedService<OutboxProcessor>();
-                });
-    }
+    throw new InvalidOperationException("SQL__CONNECTION_STRING environment variable is not set.");
 }
+builder.Services.AddDbContext<OutboxDbContext>(options =>
+    options.UseSqlServer(sqlConnectionString));
+
+// Configure RabbitMQ
+var rabbitMqHost = builder.Configuration["RABBITMQ__HOST"] ?? "rabbitmq";
+var rabbitMqUser = builder.Configuration["RABBITMQ__USER"];
+var rabbitMqPassword = builder.Configuration["RABBITMQ__PASSWORD"];
+
+if (string.IsNullOrEmpty(rabbitMqUser) || string.IsNullOrEmpty(rabbitMqPassword))
+{
+    throw new InvalidOperationException("RABBITMQ__USER or RABBITMQ__PASSWORD environment variables are not set.");
+}
+
+builder.Services.AddSingleton<IConnectionFactory>(sp => new ConnectionFactory()
+{
+    HostName = rabbitMqHost,
+    UserName = rabbitMqUser,
+    Password = rabbitMqPassword,
+    DispatchConsumersAsync = true
+});
+
+// Add Health Checks
+builder.Services.AddHealthChecks()
+    .AddSqlServer(sqlConnectionString, name: "SQL-DB-Check", tags: new[] { "ready" })
+    .AddRabbitMQ(
+        sp => sp.GetRequiredService<IConnectionFactory>(),
+        name: "RabbitMQ-Check", tags: new[] { "ready" });
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+
+// Map health checks
+app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = (check) => check.Tags.Contains("ready"),
+});
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = (_) => false // Liveness check only checks if the app is running
+});
+
+app.MapGet("/", () => "Hello from Outbox Worker!");
+
+app.Run();
